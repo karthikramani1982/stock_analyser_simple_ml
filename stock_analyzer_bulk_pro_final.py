@@ -164,54 +164,57 @@ if st.sidebar.button("Retrain ML Model"):
         X = df[["Revenue Growth %", "Profit Margin %", "Debt/Equity", "Dividend Yield %", "Dividend Growth %", "1Y Price Momentum %"]]
         y = df["Label (Outperform?)"]
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-        # 1️⃣ Train Random Forest
-        from sklearn.ensemble import RandomForestClassifier
-        rf_model = RandomForestClassifier(n_estimators=100, max_depth=6, random_state=42, class_weight='balanced')
-        rf_model.fit(X_train, y_train)
-        rf_accuracy = rf_model.score(X_test, y_test)
-
-        with open("stock_model_rf.pkl", "wb") as f:
-            pickle.dump(rf_model, f)
-
-        # 2️⃣ Train XGBoost
-        from xgboost import XGBClassifier
-        xgb_model = XGBClassifier(
-            n_estimators=200,
-            max_depth=5,
-            learning_rate=0.05,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            use_label_encoder=False,
-            eval_metric='logloss',
-            random_state=42
-        )
-        xgb_model.fit(X_train, y_train)
-        xgb_accuracy = xgb_model.score(X_test, y_test)
-
-        with open("stock_model_xgb.pkl", "wb") as f:
-            pickle.dump(xgb_model, f)
-
-        # 3️⃣ Pick best model
-        if xgb_accuracy >= rf_accuracy:
-            best_model = xgb_model
-            best_model_name = "XGBoost"
-            best_accuracy = xgb_accuracy
+        # 🛡️ Check that both classes exist (0 and 1)
+        if y.nunique() < 2:
+            st.error("⚠️ Dataset does not have both outperform (1) and underperform (0) classes. Please rebuild dataset!")
         else:
-            best_model = rf_model
-            best_model_name = "Random Forest"
-            best_accuracy = rf_accuracy
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        with open("stock_model_final.pkl", "wb") as f:
-            pickle.dump(best_model, f)
+            # Train Random Forest
+            from sklearn.ensemble import RandomForestClassifier
+            rf_model = RandomForestClassifier(n_estimators=100, max_depth=6, random_state=42, class_weight='balanced')
+            rf_model.fit(X_train, y_train)
+            rf_accuracy = rf_model.score(X_test, y_test)
 
-        # 4️⃣ Update metadata
-        metadata["ml_version"] += 1
-        metadata["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-        save_metadata(metadata)
+            with open("stock_model_rf.pkl", "wb") as f:
+                pickle.dump(rf_model, f)
 
-    st.success(f"✅ Models trained. Best model: {best_model_name} ({best_accuracy*100:.2f}% accuracy) saved as stock_model_final.pkl!")
+            # Train XGBoost
+            from xgboost import XGBClassifier
+            xgb_model = XGBClassifier(
+                n_estimators=200,
+                max_depth=5,
+                learning_rate=0.05,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                use_label_encoder=False,
+                eval_metric='logloss',
+                random_state=42
+            )
+            xgb_model.fit(X_train, y_train)
+            xgb_accuracy = xgb_model.score(X_test, y_test)
+
+            with open("stock_model_xgb.pkl", "wb") as f:
+                pickle.dump(xgb_model, f)
+
+            # Pick best
+            if xgb_accuracy >= rf_accuracy:
+                best_model = xgb_model
+                best_model_name = "XGBoost"
+                best_accuracy = xgb_accuracy
+            else:
+                best_model = rf_model
+                best_model_name = "Random Forest"
+                best_accuracy = rf_accuracy
+
+            with open("stock_model_final.pkl", "wb") as f:
+                pickle.dump(best_model, f)
+
+            metadata["ml_version"] += 1
+            metadata["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+            save_metadata(metadata)
+
+            st.success(f"✅ Best Model: {best_model_name} ({best_accuracy*100:.2f}% accuracy). Saved!")
 
 
 #end Part 1
@@ -226,10 +229,14 @@ profile = st.sidebar.selectbox("Investor Style:", ["Balanced", "Conservative", "
 rank_method = st.sidebar.selectbox("Rank Stocks By:", ["Manual Score", "ML Prediction", "Blended Score"])
 
 # Load data
-if os.path.exists("historical_stock_dataset.csv") and os.path.exists("stock_model.pkl"):
+if os.path.exists("historical_stock_dataset.csv") and os.path.exists("stock_model_final.pkl"):
     df = pd.read_csv("historical_stock_dataset.csv")
-    with open("stock_model_final.pkl", "rb") as f:
-        model = pickle.load(f)
+    try:
+        with open("stock_model_final.pkl", "rb") as f:
+            model = pickle.load(f)
+    except FileNotFoundError:
+        st.error("⚠️ No trained model found. Please retrain first.")
+        st.stop()
 
     def manual_score(row):
         score = 0
