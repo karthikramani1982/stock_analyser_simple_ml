@@ -21,8 +21,10 @@ It allows you to:
   - Supports Light Mode (50 stocks) or Full Mode (100 stocks)
 
 - **Machine Learning**  
-  - Random Forest Classifier to predict 3-year outperformers
   - Auto-retraining inside the app with 1 click
+  - Random Forest Classifier to predict 3-year outperformers
+  - XGboost algorithm to also predict 3-year outperformers
+  - Automatically selects best model (Random Forest or XGBoost) during retraining.
 
 - **Stock Scoring and Ranking**  
   - Manual scoring based on Revenue Growth, Margins, Debt, Dividends, Momentum
