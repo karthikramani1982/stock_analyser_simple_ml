@@ -46,7 +46,7 @@ It allows you to:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/stock-analyzer.git
+   git clone https://github.com/karthikramani1982/stock_analyser_simple_ml.git
    cd stock-analyzer
 
 Install requirements as follows:
